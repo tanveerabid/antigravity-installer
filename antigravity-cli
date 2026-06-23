@@ -1,0 +1,363 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# ==========================================
+# CONFIGURATION & CONSTANTS
+# ==========================================
+CLI_NAME="antigravity-cli"
+LOG_DIR="$HOME/.cache/$CLI_NAME"
+LOG_FILE="$LOG_DIR/install.log"
+TMP_DIR=""
+
+COMMAND=""
+TARGET=""
+ARCHIVE=""
+APP_VERSION="unknown"
+
+# ==========================================
+# LOGGING & CLEANUP
+# ==========================================
+mkdir -p "$LOG_DIR"
+
+log_info() {
+    local msg="[$CLI_NAME] [INFO] $1"
+    echo "$msg"
+    echo "$(date '+%Y-%m-%d %H:%M:%S') $msg" >> "$LOG_FILE"
+}
+
+log_error() {
+    local msg="[$CLI_NAME] [ERROR] $1"
+    echo "$msg" >&2
+    echo "$(date '+%Y-%m-%d %H:%M:%S') $msg" >> "$LOG_FILE"
+}
+
+log_transaction() {
+    local status="$1"
+    echo "$(date '+%Y-%m-%d %H:%M:%S') [$CLI_NAME] CMD: $COMMAND, PKG: $TARGET, VER: $APP_VERSION, STATUS: $status" >> "$LOG_FILE"
+}
+
+cleanup() {
+    if [[ -n "${TMP_DIR:-}" && -d "$TMP_DIR" ]]; then
+        log_info "Running cleanup: removing temporary directory $TMP_DIR"
+        rm -rf "$TMP_DIR"
+    fi
+}
+trap cleanup EXIT
+
+if [[ $EUID -eq 0 ]]; then
+    echo "Do not run $CLI_NAME with sudo."
+    echo "Run as normal user."
+    exit 1
+fi
+
+show_help() {
+    cat << EOF
+[$CLI_NAME] Usage Instructions
+
+Manage Antigravity Hub and IDE installations with full sandbox and icon isolation.
+
+Commands:
+  --install --hub [file.tar.gz]   Install Antigravity Hub
+  --install --ide [file.tar.gz]   Install Antigravity IDE
+  --update --hub [file.tar.gz]    Update Antigravity Hub
+  --update --ide [file.tar.gz]    Update Antigravity IDE
+  --remove --hub                  Remove Antigravity Hub
+  --remove --ide                  Remove Antigravity IDE
+  --help, -h                      Show this help message
+EOF
+}
+
+if [[ $# -eq 0 ]]; then
+    show_help
+    exit 0
+fi
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --install) COMMAND="install"; shift ;;
+        --update) COMMAND="update"; shift ;;
+        --remove) COMMAND="remove"; shift ;;
+        --hub) TARGET="hub"; shift ;;
+        --ide) TARGET="ide"; shift ;;
+        --help|-h) show_help; exit 0 ;;
+        -*) log_error "Unknown option: $1"; show_help; exit 1 ;;
+        *) ARCHIVE="$1"; shift ;;
+    esac
+done
+
+if [[ -z "$COMMAND" || -z "$TARGET" ]]; then
+    log_error "Both a command (--install/--update/--remove) and a target (--hub/--ide) are required."
+    exit 1
+fi
+
+if [[ "$COMMAND" == "remove" ]]; then
+    log_info "Initiating removal process for $TARGET..."
+    sudo -v || { log_error "Sudo access required for removal."; log_transaction "FAILED"; exit 1; }
+    
+    local install_path="/opt/antigravity-$TARGET"
+    if [[ -d "$install_path" ]]; then
+        sudo rm -rf "$install_path"
+        log_info "Successfully removed application files from $install_path"
+    else
+        log_info "Application directory $install_path not found. Skipping."
+    fi
+
+    local desktop_file="$HOME/.local/share/applications/antigravity-${TARGET}.desktop"
+    if [[ -f "$desktop_file" ]]; then
+        rm -f "$desktop_file"
+        log_info "Removed desktop entry."
+        if command -v update-desktop-database >/dev/null 2>&1; then
+            update-desktop-database "$HOME/.local/share/applications/" || true
+        fi
+    fi
+
+    log_info "User data preserved."
+    log_transaction "SUCCESS"
+    exit 0
+fi
+
+if [[ -z "$ARCHIVE" ]]; then
+    shopt -s nullglob
+    declare -a archives=(*.tar.gz)
+    shopt -u nullglob
+
+    if [[ ${#archives[@]} -eq 0 ]]; then
+        log_error "No archive provided and no *.tar.gz found in the current directory."
+        log_transaction "FAILED"
+        exit 1
+    elif [[ ${#archives[@]} -eq 1 ]]; then
+        ARCHIVE="${archives[0]}"
+        log_info "Auto-selected archive: $ARCHIVE"
+    else
+        echo "[$CLI_NAME] Multiple archives found. Please select one:"
+        select file in "${archives[@]}"; do
+            if [[ -n "$file" ]]; then
+                ARCHIVE="$file"
+                break
+            else
+                echo "Invalid selection."
+            fi
+        done
+    fi
+fi
+
+if [[ ! -f "$ARCHIVE" ]]; then
+    log_error "Archive file not found: $ARCHIVE"
+    log_transaction "FAILED"
+    exit 1
+fi
+
+log_info "Validating archive security for: $ARCHIVE"
+if ! tar -tzf "$ARCHIVE" >/dev/null 2>&1; then
+    log_error "Archive is corrupted or invalid."
+    log_transaction "FAILED"
+    exit 1
+fi
+
+if tar -tzf "$ARCHIVE" | grep -q -E '(^/|\.\./)'; then
+    log_error "Archive rejected: contains absolute paths or parent directory traversals."
+    log_transaction "FAILED"
+    exit 1
+fi
+
+TMP_DIR=$(mktemp -d /tmp/$CLI_NAME.XXXXXX)
+log_info "Extracting securely to temporary directory: $TMP_DIR"
+tar -xzf "$ARCHIVE" -C "$TMP_DIR"
+
+EXT_BASE=$(find "$TMP_DIR" -type f -name "app.asar" -printf '%h\n' | head -n 1 | sed 's|/resources$||' || true)
+if [[ -z "$EXT_BASE" ]]; then
+    EXT_BASE=$(find "$TMP_DIR" -type f -name "antigravity-ide" -printf '%h\n' | head -n 1 | sed 's|/bin$||' || true)
+fi
+[[ -z "$EXT_BASE" ]] && EXT_BASE="$TMP_DIR"
+
+DETECTED=""
+if [[ -f "$EXT_BASE/resources/app.asar" && -f "$EXT_BASE/antigravity" ]]; then
+    DETECTED="hub"
+fi
+if [[ -f "$EXT_BASE/bin/antigravity-ide" ]]; then
+    if [[ -n "$DETECTED" ]]; then
+        log_error "Ambiguous package: Archive contains signatures for both Hub and IDE."
+        log_transaction "FAILED"
+        exit 1
+    fi
+    DETECTED="ide"
+fi
+
+if [[ -z "$DETECTED" ]]; then
+    log_error "Invalid package: Missing required application executables or structure."
+    log_transaction "FAILED"
+    exit 1
+fi
+
+if [[ "$TARGET" != "$DETECTED" ]]; then
+    echo "Requested: $TARGET | Detected: $DETECTED"
+    log_error "Package mismatch protection triggered. No changes allowed."
+    log_transaction "FAILED"
+    exit 1
+fi
+
+cat << 'EOF' > "$TMP_DIR/extract_asar.py"
+import sys, json, struct, os
+def extract_file(asar_f, h_size, file_node, out_p):
+    if not file_node or 'size' not in file_node or 'offset' not in file_node:
+        return False
+    asar_f.seek(16 + h_size + int(file_node['offset']))
+    os.makedirs(os.path.dirname(out_p), exist_ok=True)
+    with open(out_p, 'wb') as out:
+        out.write(asar_f.read(int(file_node['size'])))
+    return True
+
+def find_file_rec(node, target_name=None, is_icon=False, current_path=""):
+    if 'files' in node:
+        for name, child in node['files'].items():
+            cp = os.path.join(current_path, name) if current_path else name
+            if target_name and name == target_name:
+                return child, cp
+            if is_icon:
+                ln = name.lower()
+                if ('icon' in ln or 'logo' in ln) and (ln.endswith('.png') or ln.endswith('.svg')):
+                    return child, cp
+            res_node, res_path = find_file_rec(child, target_name, is_icon, cp)
+            if res_node:
+                return res_node, res_path
+    return None, None
+
+try:
+    asar_path = sys.argv[1]
+    cmd = sys.argv[2]
+    out_path = sys.argv[3]
+    with open(asar_path, 'rb') as f:
+        f.read(12)
+        h_size = struct.unpack('<I', f.read(4))[0]
+        h_json = f.read(h_size).decode('utf-8').strip('\x00')
+        header = json.loads(h_json)
+        if cmd == 'version':
+            node, _ = find_file_rec(header, target_name='package.json')
+            if extract_file(f, h_size, node, out_path): sys.exit(0)
+        elif cmd == 'icon':
+            node, found_path = find_file_rec(header, is_icon=True)
+            if node:
+                ext = os.path.splitext(found_path)[1].lower()
+                if extract_file(f, h_size, node, out_path + ext):
+                    print(ext)
+                    sys.exit(0)
+    sys.exit(1)
+except Exception:
+    sys.exit(1)
+EOF
+
+INSTALL_PATH="/opt/antigravity-$TARGET"
+log_info "Detecting package version..."
+EXTRACTED_ICON=""
+ICON_EXT=""
+
+if [[ -f "$EXT_BASE/resources/app.asar" ]]; then
+    if python3 "$TMP_DIR/extract_asar.py" "$EXT_BASE/resources/app.asar" version "$TMP_DIR/package.json" 2>/dev/null; then
+        APP_VERSION=$(grep -oP '"version"\s*:\s*"\K[^"]+' "$TMP_DIR/package.json" | head -n 1 || echo "unknown")
+    fi
+    ICON_EXT=$(python3 "$TMP_DIR/extract_asar.py" "$EXT_BASE/resources/app.asar" icon "$TMP_DIR/extracted_icon" 2>/dev/null || echo "")
+    if [[ -n "$ICON_EXT" ]]; then EXTRACTED_ICON="$TMP_DIR/extracted_icon$ICON_EXT"; fi
+elif [[ "$TARGET" == "ide" ]]; then
+    chmod +x "$EXT_BASE/bin/antigravity-ide"
+    APP_VERSION=$("$EXT_BASE/bin/antigravity-ide" --version 2>/dev/null | head -n 1 || echo "unknown")
+fi
+
+log_info "Detected $TARGET version in archive: $APP_VERSION"
+
+if [[ "$COMMAND" == "update" ]]; then
+    CURRENT_VERSION="none"
+    if [[ -d "$INSTALL_PATH" ]]; then
+        if [[ "$TARGET" == "ide" && -x "$INSTALL_PATH/bin/antigravity-ide" ]]; then
+            CURRENT_VERSION=$("$INSTALL_PATH/bin/antigravity-ide" --version 2>/dev/null | head -n 1 || echo "unknown")
+        elif [[ "$TARGET" == "hub" && -f "$INSTALL_PATH/resources/app.asar" ]]; then
+            if python3 "$TMP_DIR/extract_asar.py" "$INSTALL_PATH/resources/app.asar" version "$TMP_DIR/installed_package.json" 2>/dev/null; then
+                CURRENT_VERSION=$(grep -oP '"version"\s*:\s*"\K[^"]+' "$TMP_DIR/installed_package.json" | head -n 1 || echo "unknown")
+            fi
+        fi
+    fi
+    if [[ "$CURRENT_VERSION" == "$APP_VERSION" ]]; then
+        log_info "The installed version matches the archive version. No update required."
+        log_transaction "SKIPPED_EQUAL_VERSIONS"
+        exit 0
+    fi
+fi
+
+NEW_PATH="${INSTALL_PATH}.new"
+BACKUP_PATH="${INSTALL_PATH}.backup"
+log_info "Acquiring sudo permissions for deployment..."
+sudo -v || { log_error "Sudo access required."; log_transaction "FAILED"; exit 1; }
+
+sudo rm -rf "$NEW_PATH"
+sudo mkdir -p "$NEW_PATH"
+sudo cp -a "$EXT_BASE/"* "$NEW_PATH/"
+
+if [[ -n "${EXTRACTED_ICON:-}" && -f "$EXTRACTED_ICON" ]]; then
+    sudo cp "$EXTRACTED_ICON" "$NEW_PATH/app_main_logo${ICON_EXT}"
+fi
+
+if [[ "$TARGET" == "hub" ]]; then
+    sudo chmod +x "$NEW_PATH/antigravity"
+else
+    sudo chmod +x "$NEW_PATH/bin/antigravity-ide"
+fi
+
+while IFS= read -r sandbox_file; do
+    if [[ -n "$sandbox_file" ]]; then
+        if ! sudo chown root:root "$sandbox_file" || ! sudo chmod 4755 "$sandbox_file"; then
+            sudo rm -rf "$NEW_PATH"
+            log_transaction "FAILED"
+            exit 1
+        fi
+    fi
+done <<< "$(find "$NEW_PATH" -type f -name "chrome-sandbox")"
+
+if [[ -d "$INSTALL_PATH" ]]; then sudo mv "$INSTALL_PATH" "$BACKUP_PATH"; fi
+if ! sudo mv "$NEW_PATH" "$INSTALL_PATH"; then
+    [[ -d "$BACKUP_PATH" ]] && sudo mv "$BACKUP_PATH" "$INSTALL_PATH"
+    exit 1
+fi
+
+log_info "Installation successful. Cleaning up..."
+[[ -d "$BACKUP_PATH" ]] && sudo rm -rf "$BACKUP_PATH"
+
+DESKTOP_DIR="$HOME/.local/share/applications"
+mkdir -p "$DESKTOP_DIR"
+DESKTOP_FILE="$DESKTOP_DIR/antigravity-${TARGET}.desktop"
+
+ICON_ABS_PATH=""
+if [[ -f "$INSTALL_PATH/app_main_logo.png" ]]; then ICON_ABS_PATH="$INSTALL_PATH/app_main_logo.png"
+elif [[ -f "$INSTALL_PATH/app_main_logo.svg" ]]; then ICON_ABS_PATH="$INSTALL_PATH/app_main_logo.svg"
+else ICON_ABS_PATH=$(find "$INSTALL_PATH" -type f \( -iname "*icon*.png" -o -iname "*icon*.svg" \) | head -n 1 || true); fi
+
+HUB_EXEC="/opt/antigravity-hub/antigravity --user-data-dir=$HOME/.config/antigravity-hub-isolated --disable-dev-shm-usage"
+IDE_EXEC="/opt/antigravity-ide/bin/antigravity-ide --user-data-dir=$HOME/.config/antigravity-ide-isolated --disable-dev-shm-usage"
+
+if [[ "$TARGET" == "hub" ]]; then
+    [[ -z "$ICON_ABS_PATH" ]] && ICON_ABS_PATH="Antigravity"
+    cat <<EOF > "$DESKTOP_FILE"
+[Desktop Entry]
+Name=Antigravity
+Icon=$ICON_ABS_PATH
+Exec=$HUB_EXEC
+Type=Application
+Terminal=false
+Categories=Utility;
+StartupWMClass=antigravity
+EOF
+else
+    [[ -z "$ICON_ABS_PATH" ]] && ICON_ABS_PATH="IDE"
+    cat <<EOF > "$DESKTOP_FILE"
+[Desktop Entry]
+Name=IDE
+Icon=$ICON_ABS_PATH
+Exec=$IDE_EXEC
+Type=Application
+Terminal=false
+Categories=Development;IDE;
+StartupWMClass=antigravity-ide
+EOF
+fi
+
+if command -v update-desktop-database >/dev/null 2>&1; then update-desktop-database "$DESKTOP_DIR" || true; fi
+log_transaction "SUCCESS"
+exit 0

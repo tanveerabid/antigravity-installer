@@ -24,9 +24,20 @@ curl -sSL [https://raw.githubusercontent.com/tanveerabid/antigravity-installer/m
 
 ---
 
-## 📝 Document Review Notes
-The current README.md on your GitHub repo tells people how to install the script itself, but it skips the most important parts: how to get the Antigravity .tar.gz files, where to open the terminal, and what exact commands (like --help) to type.
+## 📥 How to Download and Run the Archive
+1. Go to your web browser and download the official application source files (`.tar.gz` packages).
+2. Open your system **Downloads** folder (or the folder where you saved the files).
+3. Right-click on any empty blank space inside that folder window and select **Open in Terminal**.
+4. Run your installation commands from this specific terminal window so the script can locate your downloaded archives.
 
-To ensure that a brand new user can understand it instantly, this documentation has been updated to include:
-* **Clear instructions** on downloading the .tar.gz files from Google and opening the terminal right there.
+---
+
+## 🚀 Usage Commands Reference
+
+Run these commands directly from the terminal window you opened inside your download directory:
+
+### 1. View Available System Options
+To display the complete interactive help menu and flags, type:
+```bash
+antigravity-cli --help instructions** on downloading the .tar.gz files from Google and opening the terminal right there.
 * **A Command Reference section** showing exactly how to use --help, --install, --update, and --remove.

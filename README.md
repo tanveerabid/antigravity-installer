@@ -23,6 +23,7 @@ Deploy the stable management client directly onto your system using this isolate
 curl -sSL [https://raw.githubusercontent.com/tanveerabid/antigravity-installer/main/antigravity-cli](https://raw.githubusercontent.com/tanveerabid/antigravity-installer/main/antigravity-cli) -o ~/.local/bin/antigravity-cli && chmod +x ~/.local/bin/antigravity-cli
 
 ---
+---
 
 ## 📥 How to Download and Run the Archive
 1. Go to your web browser and download the official application source files (`.tar.gz` packages).
@@ -38,6 +39,23 @@ Run these commands directly from the terminal window you opened inside your down
 
 ### 1. View Available System Options
 To display the complete interactive help menu and flags, type:
-```bash
-antigravity-cli --help instructions** on downloading the .tar.gz files from Google and opening the terminal right there.
+`antigravity-cli --help`
+
+### 2. Deployment & Installation
+* **To install the background Hub orchestrator engine:**  
+  `antigravity-cli --install --hub`
+* **To install the workspace developer interface surface (IDE):**  
+  `antigravity-cli --install --ide`
+
+### 3. Application Version Updates
+* **To update your existing Hub setup to a newly downloaded archive version:**  
+  `antigravity-cli --update --hub`
+* **To update your existing IDE setup to a newly downloaded archive version:**  
+  `antigravity-cli --update --ide`
+
+### 4. Complete Removal & Clean Uninstall
+* **To safely sweep away core Hub files and desktop launch elements:**  
+  `antigravity-cli --remove --hub`
+* **To safely sweep away core IDE files and desktop launch elements:**  
+  `antigravity-cli --remove --ide`
 * **A Command Reference section** showing exactly how to use --help, --install, --update, and --remove.

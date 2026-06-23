@@ -14,8 +14,10 @@ Before launching the script, verify that your system architecture satisfies thes
 * **Interpreter:** `python3` (required to decode the binary `.asar` filesystem logs).
 * **Privileges:** Standard desktop user configuration (the script calls `sudo` internally *only* when modifying `/opt`).
 
-## Quick One-Line Installation
+---
+
+## 🛠️ Step 1: Install the CLI Tool
 Deploy the stable management client directly onto your system using this isolated single line installation:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/tanveerabid/antigravity-installer/main/antigravity-cli -o ~/.local/bin/antigravity-cli && chmod +x ~/.local/bin/antigravity-cli
+curl -sSL [https://raw.githubusercontent.com/tanveerabid/antigravity-installer/main/antigravity-cli](https://raw.githubusercontent.com/tanveerabid/antigravity-installer/main/antigravity-cli) -o ~/.local/bin/antigravity-cli && chmod +x ~/.local/bin/antigravity-cli

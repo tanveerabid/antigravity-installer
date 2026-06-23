@@ -2,69 +2,96 @@
 
 An advanced, atomic management tool built to seamlessly install, update, and completely isolate Google Antigravity 2.0 application files on modern desktop Linux environments (X11 & Wayland).
 
+---
+
 ## Key Features
-* 🔒 **Runtime Memory Isolation:** Configures native sandbox flags to completely eliminate multi-instance memory collisions (`SIGTRAP` errors).
-* 👁️ **Hidden ASAR Icon Extraction:** Pulls application image assets directly out of compressed Electron files so system menus can render your icons perfectly.
-* 📌 **Correct Window Grouping:** Automatically maps execution strings (`StartupWMClass`) to your dock launcher to avoid broken generic gear window emblems.
-* 🔀 **Smart Safety Guardrails:** Restricts mismatched source files from executing over opposite runtime profiles.
+
+- 🔒 **Runtime Memory Isolation:** Configures native sandbox flags to completely eliminate multi-instance memory collisions (`SIGTRAP` errors).
+- 👁️ **Hidden ASAR Icon Extraction:** Pulls application image assets directly out of compressed Electron files so system menus can render your icons perfectly.
+- 📌 **Correct Window Grouping:** Automatically maps execution strings (`StartupWMClass`) to your dock launcher to avoid broken generic gear window emblems.
+- 🔀 **Smart Safety Guardrails:** Restricts mismatched source files from executing over opposite runtime profiles.
+
+---
 
 ## Prerequisites
-Before launching the script, verify that your system architecture satisfies these minor dependencies:
-* **Operating System:** Ubuntu 20.04+, Debian 10+, Fedora 36+, Linux Mint 21+, or Arch Linux.
-* **Interpreter:** `python3` (required to decode the binary `.asar` filesystem logs).
-* **Privileges:** Standard desktop user configuration (the script calls `sudo` internally *only* when modifying `/opt`).
+
+Before launching the script, verify that your system satisfies these dependencies:
+
+| Requirement | Details |
+|---|---|
+| **Operating System** | Ubuntu 20.04+, Debian 10+, Fedora 36+, Linux Mint 21+, or Arch Linux |
+| **Interpreter** | `python3` — required to decode binary `.asar` filesystem logs |
+| **Privileges** | Standard desktop user — the script calls `sudo` internally only when modifying `/opt` |
 
 ---
 
-## 🛠️ Step 1: Install the CLI Tool
-Deploy the stable management client directly onto your system using this isolated single line installation:
+## Step 1: Install the CLI Tool
+
+Deploy the management client onto your system using this single-line installation:
 
 ```bash
-curl -sSL [https://raw.githubusercontent.com/tanveerabid/antigravity-installer/main/antigravity-cli](https://raw.githubusercontent.com/tanveerabid/antigravity-installer/main/antigravity-cli) -o ~/.local/bin/antigravity-cli && chmod +x ~/.local/bin/antigravity-cli
+curl -sSL https://raw.githubusercontent.com/tanveerabid/antigravity-installer/main/antigravity-cli \
+  -o ~/.local/bin/antigravity-cli && chmod +x ~/.local/bin/antigravity-cli
+```
 
 ---
 
-## 📥 How to Download and Run the Archive
-1. Go to your web browser and download the official application source files (`.tar.gz` packages).
-2. Open your system **Downloads** folder (or the folder where you saved the files).
-3. Right-click on any empty blank space inside that folder window and select **Open in Terminal**.
-4. Run your installation commands from this specific terminal window so the script can locate your downloaded archives.
+## Step 2: Download and Run an Archive
+
+1. Go to your browser and download the official application source files (`.tar.gz` packages).
+2. Open your system **Downloads** folder (or wherever you saved the files).
+3. Right-click any empty space inside that folder and select **Open in Terminal**.
+4. Run the installation commands from that terminal window so the script can locate your downloaded archives.
 
 ---
 
-## 🚀 Usage Commands Reference
+## Usage
 
-Run these commands directly from the terminal window you opened inside your download directory:
+Run all commands from the terminal you opened inside your downloads directory.
+
+### Help
+
+```bash
+antigravity-cli --help
+```
+
+### Install
+
+```bash
+# Install the background Hub orchestrator engine
+antigravity-cli --install --hub
+
+# Install the workspace developer interface (IDE)
+antigravity-cli --install --ide
+```
+
+### Update
+
+```bash
+# Update Hub to a newly downloaded archive version
+antigravity-cli --update --hub
+
+# Update IDE to a newly downloaded archive version
+antigravity-cli --update --ide
+```
+
+### Remove
+
+```bash
+# Remove Hub application files and desktop entry
+antigravity-cli --remove --hub
+
+# Remove IDE application files and desktop entry
+antigravity-cli --remove --ide
+```
 
 ---
 
-### 1. View Available System Options
-To display the complete interactive help menu and flags, type:
-`antigravity-cli --help`
+## Command Reference
 
----
-
-### 2. Deployment & Installation
-* **To install the background Hub orchestrator engine:**  
-  `antigravity-cli --install --hub`
-* **To install the workspace developer interface surface (IDE):**  
-  `antigravity-cli --install --ide`
-
----
-
-### 3. Application Version Updates
-* **To update your existing Hub setup to a newly downloaded archive version:**  
-  `antigravity-cli --update --hub`
-* **To update your existing IDE setup to a newly downloaded archive version:**  
-  `antigravity-cli --update --ide`
-
----
-
-### 4. Complete Removal & Clean Uninstall
-* **To safely sweep away core Hub files and desktop launch elements:**  
-  `antigravity-cli --remove --hub`
-* **To safely sweep away core IDE files and desktop launch elements:**  
-  `antigravity-cli --remove --ide`
-* **A Command Reference section** showing exactly how to use --help, --install, --update, and --remove.
-
----
+| Command | Flag | Description |
+|---|---|---|
+| `--help` | — | Display the interactive help menu |
+| `--install` | `--hub` / `--ide` | Install from a downloaded `.tar.gz` archive |
+| `--update` | `--hub` / `--ide` | Update an existing installation from a new archive |
+| `--remove` | `--hub` / `--ide` | Remove application files and desktop launcher |

@@ -23,7 +23,6 @@ Deploy the stable management client directly onto your system using this isolate
 curl -sSL [https://raw.githubusercontent.com/tanveerabid/antigravity-installer/main/antigravity-cli](https://raw.githubusercontent.com/tanveerabid/antigravity-installer/main/antigravity-cli) -o ~/.local/bin/antigravity-cli && chmod +x ~/.local/bin/antigravity-cli
 
 ---
----
 
 ## 📥 How to Download and Run the Archive
 1. Go to your web browser and download the official application source files (`.tar.gz` packages).

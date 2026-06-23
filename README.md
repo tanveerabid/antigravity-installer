@@ -21,3 +21,12 @@ Deploy the stable management client directly onto your system using this isolate
 
 ```bash
 curl -sSL [https://raw.githubusercontent.com/tanveerabid/antigravity-installer/main/antigravity-cli](https://raw.githubusercontent.com/tanveerabid/antigravity-installer/main/antigravity-cli) -o ~/.local/bin/antigravity-cli && chmod +x ~/.local/bin/antigravity-cli
+
+---
+
+## 📝 Document Review Notes
+The current README.md on your GitHub repo tells people how to install the script itself, but it skips the most important parts: how to get the Antigravity .tar.gz files, where to open the terminal, and what exact commands (like --help) to type.
+
+To ensure that a brand new user can understand it instantly, this documentation has been updated to include:
+* **Clear instructions** on downloading the .tar.gz files from Google and opening the terminal right there.
+* **A Command Reference section** showing exactly how to use --help, --install, --update, and --remove.

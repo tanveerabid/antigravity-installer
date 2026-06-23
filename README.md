@@ -37,9 +37,13 @@ curl -sSL [https://raw.githubusercontent.com/tanveerabid/antigravity-installer/m
 
 Run these commands directly from the terminal window you opened inside your download directory:
 
+---
+
 ### 1. View Available System Options
 To display the complete interactive help menu and flags, type:
 `antigravity-cli --help`
+
+---
 
 ### 2. Deployment & Installation
 * **To install the background Hub orchestrator engine:**  
@@ -47,11 +51,15 @@ To display the complete interactive help menu and flags, type:
 * **To install the workspace developer interface surface (IDE):**  
   `antigravity-cli --install --ide`
 
+---
+
 ### 3. Application Version Updates
 * **To update your existing Hub setup to a newly downloaded archive version:**  
   `antigravity-cli --update --hub`
 * **To update your existing IDE setup to a newly downloaded archive version:**  
   `antigravity-cli --update --ide`
+
+---
 
 ### 4. Complete Removal & Clean Uninstall
 * **To safely sweep away core Hub files and desktop launch elements:**  
@@ -59,3 +67,5 @@ To display the complete interactive help menu and flags, type:
 * **To safely sweep away core IDE files and desktop launch elements:**  
   `antigravity-cli --remove --ide`
 * **A Command Reference section** showing exactly how to use --help, --install, --update, and --remove.
+
+---
